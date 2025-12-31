@@ -1,68 +1,92 @@
 
-#include <unistd.h> //reading
-#include <fcntl.h> // open
+#include <unistd.h>    //reading
+#include <fcntl.h>     // open
 #include <sys/types.h> //
 #include <sys/stat.h>
 
 #define BUFFER_SIZE 4096
 
-int main(int argc, char *argv[]) {
-	if (argc != 3) {
+int main(int argc, char *argv[])
+{
+
+    // check 2 arguments provided (source file and destination file)
+    if (argc != 3)
+    {
         char *msg = "Usage: ./my_copy <source_file> <destination_file>\n";
-        write(2, msg, 46); // 2 is STDERR_FILENO
+        write(2, msg, 46); // error message
         return 1;
     }
 
+    // open source file for reading
     int src_fd = open(argv[1], O_RDONLY);
-    if (src_fd < 0) {
+    if (src_fd < 0)
+    {
         char *err = "Error: cannot open source file\n";
-        write(2, err, 30); // 2 = STDERR
+        write(2, err, 30); // print error to stderr
         return 1;
     }
-
-int dest_fd = open(argv[2], O_WRONLY | O_EXCL);
-    if (dest_fd < 0) {
+    // try opening destination file for writing, fail if exists
+    int dest_fd = open(argv[2], O_WRONLY | O_EXCL);
+    if (dest_fd < 0) //dest file exists
+    {
         char *msg = "Destination file already exists. Overwrite? (y/n): ";
         write(1, msg, 45);
-}
-        char response;
-while (1) {
-    if (read(0, &response, 1) != 1) {
-        write(2, "Error reading input\n", 20);
-        close(src_fd);
-        return 1;
     }
-
-    // ignore newline
-    if (response == '\n') continue;
-
-    if (response == 'y' || response == 'Y') {
-        // Open with truncate to overwrite
-        dest_fd = open(argv[2], O_WRONLY | O_TRUNC | O_CREAT, 0644);
-        if (dest_fd < 0) {
-            write(2, "Cannot overwrite destination file\n", 33);
+    char response;
+    // till valid input
+    while (1)
+    {
+        //read single char response
+        if (read(0, &response, 1) != 1)
+        {
+            write(2, "Error reading input\n", 20);
             close(src_fd);
             return 1;
         }
-        break;
-    } else if (response == 'n' || response == 'N') {
-        write(1, "Copy cancelled by user\n", 23);
-        close(src_fd);
-        return 0;
-    } else {
-        write(1, "Please enter y or n: ", 21);
+
+        // ignore newline
+        if (response == '\n')
+            continue;
+
+        if (response == 'y' || response == 'Y')
+        {
+            //open with truncate to overwrite
+            dest_fd = open(argv[2], O_WRONLY | O_TRUNC | O_CREAT, 0644);
+            if (dest_fd < 0)
+            {
+                write(2, "Cannot overwrite destination file\n", 33);
+                close(src_fd);
+                return 1;
+            }
+            break;
+        }
+
+        //user declined overwrite
+        else if (response == 'n' || response == 'N')
+        {
+            write(1, "Copy cancelled by user\n", 23);
+            close(src_fd);
+            return 0;
+        }
+        else // invalid input
+        {
+            write(1, "Please enter y or n: ", 21);
+        }
     }
-}
-
-
+    //buffer used to transfer data
     char buffer[BUFFER_SIZE];
     ssize_t bytes_read;
 
-    while ((bytes_read = read(src_fd, buffer, BUFFER_SIZE)) > 0) {
+    //read from file in parts
+    while ((bytes_read = read(src_fd, buffer, BUFFER_SIZE)) > 0)
+    {
         ssize_t bytes_written = 0;
-        while (bytes_written < bytes_read) {
+        //making sure all read bytes are written
+        while (bytes_written < bytes_read)
+        {
             ssize_t bw = write(dest_fd, buffer + bytes_written, bytes_read - bytes_written);
-            if (bw < 0) {
+            if (bw < 0)
+            {
                 write(2, "Error writing to destination\n", 29);
                 close(src_fd);
                 close(dest_fd);
@@ -72,13 +96,14 @@ while (1) {
         }
     }
 
-    if (bytes_read < 0) {
+    //check for read error
+    if (bytes_read < 0)
+    {
         write(2, "Error reading source file\n", 26);
     }
-    //close files
+    // close files
     close(src_fd);
     close(dest_fd);
 
-
-return 0;
+    return 0;
 }
